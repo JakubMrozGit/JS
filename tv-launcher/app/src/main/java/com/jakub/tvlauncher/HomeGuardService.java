@@ -17,8 +17,8 @@ public class HomeGuardService extends AccessibilityService {
 
     private static final String TAG = "HomeGuard";
 
-    /** Do tego czasu nie reagujemy na ekran Canal+ (start Canal+ z naszego kafelka). */
-    static volatile long suppressWindowRedirectUntil;
+    /** Canal+ uruchomiono z naszego kafelka: jego ekran startowy nie jest "Home". */
+    static volatile boolean canalOpenedByUs;
 
     private long lastLaunch;
 
@@ -27,7 +27,7 @@ public class HomeGuardService extends AccessibilityService {
         if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
         CharSequence className = event.getClassName();
         if (className == null || !CANAL_HOME_ACTIVITY.contentEquals(className)) return;
-        if (System.currentTimeMillis() < suppressWindowRedirectUntil) return;
+        if (canalOpenedByUs) return;
 
         openLauncher();
     }
@@ -37,7 +37,10 @@ public class HomeGuardService extends AccessibilityService {
     protected boolean onKeyEvent(KeyEvent event) {
         Log.d(TAG, "key " + event.getKeyCode() + " action " + event.getAction());
         if (event.getKeyCode() != KeyEvent.KEYCODE_HOME) return false;
-        if (event.getAction() == KeyEvent.ACTION_UP) openLauncher();
+        if (event.getAction() == KeyEvent.ACTION_UP) {
+            canalOpenedByUs = false;
+            openLauncher();
+        }
         return true;
     }
 

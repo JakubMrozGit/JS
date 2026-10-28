@@ -141,6 +141,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        HomeGuardService.canalOpenedByUs = false;
         // Odśwież listę po instalacji lub odinstalowaniu aplikacji.
         // Odświeżenie bez animacji i bez resetowania zaznaczenia.
         if (allAppsMode) {
@@ -196,7 +197,7 @@ public class MainActivity extends Activity {
         if (entry.intent.getComponent() != null
                 && "com.canal.box".equals(entry.intent.getComponent().getPackageName())) {
             // Canal+ przy starcie przechodzi przez swój ekran Home, nie cofaj nas z niego.
-            HomeGuardService.suppressWindowRedirectUntil = System.currentTimeMillis() + 10000;
+            HomeGuardService.canalOpenedByUs = true;
         }
         try {
             startActivity(entry.intent);
@@ -268,10 +269,10 @@ public class MainActivity extends Activity {
 
     private static Intent launchIntent(PackageManager pm, String pkg) {
         if ("com.canal.box".equals(pkg)) {
-            // Pomijamy BoxMainActivity (ekran Home operatora), od razu otwieramy interfejs TV.
+            // Canal+ musi startować przez swój ekran startowy (BoxMainActivity).
             Intent canal = new Intent(Intent.ACTION_MAIN);
             canal.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-            canal.setClassName("com.canal.box", "com.canal.ui.tv.TvMainActivity");
+            canal.setClassName("com.canal.box", "com.canal.box.ui.boot.BoxMainActivity");
             canal.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             if (pm.resolveActivity(canal, 0) != null) return canal;
         }
