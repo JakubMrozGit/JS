@@ -2,6 +2,8 @@ package com.jakub.tvlauncher;
 
 import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
+import android.util.Log;
+import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
 /**
@@ -13,6 +15,8 @@ public class HomeGuardService extends AccessibilityService {
     private static final String CANAL_HOME_ACTIVITY = "com.canal.box.ui.boot.BoxMainActivity";
     private static final long MIN_INTERVAL_MS = 1500;
 
+    private static final String TAG = "HomeGuard";
+
     private long lastLaunch;
 
     @Override
@@ -21,6 +25,19 @@ public class HomeGuardService extends AccessibilityService {
         CharSequence className = event.getClassName();
         if (className == null || !CANAL_HOME_ACTIVITY.contentEquals(className)) return;
 
+        openLauncher();
+    }
+
+    /** Przechwytuje przycisk Home zanim dojdzie do Canal+, więc nie czekamy na jego ekran. */
+    @Override
+    protected boolean onKeyEvent(KeyEvent event) {
+        Log.d(TAG, "key " + event.getKeyCode() + " action " + event.getAction());
+        if (event.getKeyCode() != KeyEvent.KEYCODE_HOME) return false;
+        if (event.getAction() == KeyEvent.ACTION_UP) openLauncher();
+        return true;
+    }
+
+    private void openLauncher() {
         long now = System.currentTimeMillis();
         if (now - lastLaunch < MIN_INTERVAL_MS) return;
         lastLaunch = now;
