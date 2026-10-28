@@ -29,3 +29,21 @@ daj znać, a podamy pakiet do wyłączenia.
 
 ## Zmiana listy aplikacji
 Edytuj tablicę `FEATURED` w `MainActivity.java` (nazwy pakietów z `adb shell pm list packages`).
+
+## Przekierowanie przycisku Home (dekoder Canal+)
+Dekoder wymusza własny Home (`com.canal.box`). `HomeGuardService` (usługa dostępności)
+otwiera nasz launcher, gdy na wierzchu pojawi się `BoxMainActivity`.
+
+Włączenie przez ADB:
+```
+adb shell appops set com.jakub.tvlauncher SYSTEM_ALERT_WINDOW allow
+adb shell settings get secure enabled_accessibility_services
+adb shell settings put secure enabled_accessibility_services com.jakub.tvlauncher/com.jakub.tvlauncher.HomeGuardService
+adb shell settings put secure accessibility_enabled 1
+```
+(jeśli drugie polecenie zwróciło już jakieś usługi, dopisz je przed naszą po dwukropku)
+
+Wyłączenie:
+```
+adb shell settings delete secure enabled_accessibility_services
+```

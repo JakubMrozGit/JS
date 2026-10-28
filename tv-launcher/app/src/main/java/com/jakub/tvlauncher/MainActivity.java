@@ -216,6 +216,14 @@ public class MainActivity extends Activity {
     }
 
     private static Intent launchIntent(PackageManager pm, String pkg) {
+        if ("com.canal.box".equals(pkg)) {
+            // Pomijamy BoxMainActivity (ekran Home operatora), od razu otwieramy interfejs TV.
+            Intent canal = new Intent(Intent.ACTION_MAIN);
+            canal.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
+            canal.setClassName("com.canal.box", "com.canal.ui.tv.TvMainActivity");
+            canal.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (pm.resolveActivity(canal, 0) != null) return canal;
+        }
         Intent launch = pm.getLeanbackLaunchIntentForPackage(pkg);
         if (launch == null) launch = pm.getLaunchIntentForPackage(pkg);
         if (launch != null) launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
