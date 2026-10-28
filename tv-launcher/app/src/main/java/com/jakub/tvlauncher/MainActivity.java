@@ -193,6 +193,11 @@ public class MainActivity extends Activity {
             showAll(true);
             return;
         }
+        if (entry.intent.getComponent() != null
+                && "com.canal.box".equals(entry.intent.getComponent().getPackageName())) {
+            // Canal+ przy starcie przechodzi przez swój ekran Home, nie cofaj nas z niego.
+            HomeGuardService.suppressWindowRedirectUntil = System.currentTimeMillis() + 10000;
+        }
         try {
             startActivity(entry.intent);
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
