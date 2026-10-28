@@ -13,6 +13,7 @@ import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
@@ -63,6 +64,10 @@ public class MainActivity extends Activity {
     private TextView title;
     private EntryAdapter adapter;
     private boolean allAppsMode;
+    private View selectedTile;
+
+    private static final float SELECTED_SCALE = 1.08f;
+    private static final long ANIM_MS = 160;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +79,9 @@ public class MainActivity extends Activity {
         LinearLayout column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
         column.setPadding(dp(64), dp(40), dp(64), dp(24));
+        column.setClipChildren(false);
+        column.setClipToPadding(false);
+        root.setClipChildren(false);
 
         FrameLayout header = new FrameLayout(this);
         title = new TextView(this);
@@ -100,6 +108,7 @@ public class MainActivity extends Activity {
         grid.setVerticalSpacing(dp(16));
         grid.setSelector(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         grid.setClipToPadding(false);
+        grid.setClipChildren(false);
         grid.setPadding(0, dp(32), 0, 0);
         adapter = new EntryAdapter();
         grid.setAdapter(adapter);
@@ -109,23 +118,35 @@ public class MainActivity extends Activity {
                 open(entries.get(position));
             }
         });
+        grid.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                highlight(view);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                highlight(null);
+            }
+        });
         column.addView(grid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
         root.addView(column, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(root);
-        showHome();
+        showHome(true);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         // Odśwież listę po instalacji lub odinstalowaniu aplikacji.
+        // Odświeżenie bez animacji i bez resetowania zaznaczenia.
         if (allAppsMode) {
-            showAll();
+            showAll(false);
         } else {
-            showHome();
+            showHome(false);
         }
     }
 
@@ -134,7 +155,7 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         // Przycisk Home zawsze wraca na ekran główny.
         if (Intent.ACTION_MAIN.equals(intent.getAction())) {
-            showHome();
+            showHome(true);
             grid.setSelection(0);
         }
     }
@@ -142,24 +163,45 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (allAppsMode) {
-            showHome();
+            showHome(true);
         }
         // Na ekranie głównym launchera Back nic nie robi.
     }
 
+    private void highlight(View tile) {
+        if (selectedTile != null && selectedTile != tile) {
+            selectedTile.animate().scaleX(1f).scaleY(1f).setDuration(ANIM_MS).start();
+        }
+        if (tile != null) {
+            tile.animate().scaleX(SELECTED_SCALE).scaleY(SELECTED_SCALE)
+                    .setDuration(ANIM_MS).setInterpolator(new DecelerateInterpolator()).start();
+        }
+        selectedTile = tile;
+    }
+
+    /** Płynne wejście listy: lekki zjazd z góry i pojawienie się. */
+    private void animateIn() {
+        grid.animate().cancel();
+        grid.setAlpha(0f);
+        grid.setTranslationY(dp(18));
+        grid.animate().alpha(1f).translationY(0f).setDuration(240)
+                .setInterpolator(new DecelerateInterpolator()).start();
+    }
+
     private void open(Entry entry) {
         if (entry.showAll) {
-            showAll();
+            showAll(true);
             return;
         }
         try {
             startActivity(entry.intent);
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         } catch (Exception ignored) {
             // Aplikacja mogła zostać usunięta lub wyłączona.
         }
     }
 
-    private void showHome() {
+    private void showHome(boolean animate) {
         allAppsMode = false;
         title.setText("Start");
         entries.clear();
@@ -178,9 +220,10 @@ public class MainActivity extends Activity {
         Intent settings = new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         entries.add(new Entry("Ustawienia", pm.getDefaultActivityIcon(), settings, false));
         adapter.notifyDataSetChanged();
+        if (animate) animateIn();
     }
 
-    private void showAll() {
+    private void showAll(boolean animate) {
         allAppsMode = true;
         title.setText("Wszystkie aplikacje");
         entries.clear();
@@ -212,7 +255,10 @@ public class MainActivity extends Activity {
             entries.add(new Entry(ri.loadLabel(pm).toString(), ri.loadIcon(pm), launch, false));
         }
         adapter.notifyDataSetChanged();
-        grid.setSelection(0);
+        if (animate) {
+            grid.setSelection(0);
+            animateIn();
+        }
     }
 
     private static Intent launchIntent(PackageManager pm, String pkg) {
@@ -291,6 +337,9 @@ public class MainActivity extends Activity {
                 icon = (ImageView) tile.getChildAt(0);
                 label = (TextView) tile.getChildAt(1);
             }
+            tile.animate().cancel();
+            tile.setScaleX(1f);
+            tile.setScaleY(1f);
             Entry entry = entries.get(position);
             icon.setImageDrawable(entry.icon);
             label.setText(entry.label);
